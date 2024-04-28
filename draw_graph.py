@@ -41,7 +41,7 @@ def main():
     coords = [tuple(seqf()) for _ in range(n)]
     edges = [tuple(seq()) for _ in range(m)]
 
-    output_filename = f'output/drawing/{datetime.now()}.png'
+    output_filename = f'tests/test-outputs/drawing/{datetime.now()}.png'
     if len(sys.argv) > 1 :
         output_filename = sys.argv[1]
 

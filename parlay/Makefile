@@ -6,7 +6,7 @@ endif
 # TODO get jemalloc working
 
 CXX = g++
-CXXFLAGS = -Wall -std=c++17 -pthread -I parlaylib/include/ -I. -Wno-unknown-pragmas $(JEMALLOC)
+CXXFLAGS = -Wall -std=c++17 -pthread -I parlaylib/include/ -I parlaylib/examples/helper -Wno-unknown-pragmas $(JEMALLOC)
 OPTFLAGS = -O3
 
 PARLAYLIB = parlaylib/

@@ -41,7 +41,7 @@ def fruchterman_reingold(edge_list, width, height, iterations=1000, temp_init = 
         # Update cooling
         t *= cooling_rate
 
-        yield vertex_coordinates
+    return vertex_coordinates
 
 # Example edge list
 # edge_list = [(0, 1), (0, 2), (1, 2), (1, 3), (2, 3), (3, 4), (4, 5), (5, 0)]
@@ -51,8 +51,11 @@ edge_list = [seq() for _ in range(m)]
     
 
 # Width and height of the plotting area
-width = 20
-height = 10
+width = 1
+height = 1
+for x in fruchterman_reingold(edge_list, width, height):
+    print(*x)
+exit()
 
 # Create figure and axis
 fig, ax = plt.subplots()
