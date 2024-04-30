@@ -10,7 +10,7 @@ CXXFLAGS = -Wall -std=c++17 -pthread -I parlaylib/include/ -I parlaylib/examples
 OPTFLAGS = -O3
 
 PARLAYLIB = parlaylib/
-calculate_pos: calculate_pos.cpp
+calculate_pos: calculate_pos.cpp defs.h bh_tree.h
 	$(CXX) $(CXXFLAGS) $(OPTFLAGS) -o $@ calculate_pos.cpp
 
 clean:
