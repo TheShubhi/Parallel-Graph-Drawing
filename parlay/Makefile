@@ -10,8 +10,8 @@ CXXFLAGS = -Wall -std=c++17 -pthread -I parlaylib/include/ -I parlaylib/examples
 OPTFLAGS = -O3
 
 PARLAYLIB = parlaylib/
-calculate_pos: calculate_pos.cpp defs.h bh_tree.h
-	$(CXX) $(CXXFLAGS) $(OPTFLAGS) -o $@ calculate_pos.cpp
+force_directed_drawing: force_directed_drawing.cpp
+	$(CXX) $(CXXFLAGS) $(OPTFLAGS) -o $@ force_directed_drawing.cpp
 
 clean:
-	/bin/rm -rf *~ *.o calculate_pos
+	/bin/rm -rf *~ *.o force_directed_drawing
