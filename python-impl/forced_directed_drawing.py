@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import sys
+from bh_tree import BH_Tree
 
 def fruchterman_reingold(edge_list, width, height, iterations=1000, temp_init = 1, cooling_rate = 0.99):
     num_vertices = max(max(edge) for edge in edge_list) + 1
@@ -13,14 +14,19 @@ def fruchterman_reingold(edge_list, width, height, iterations=1000, temp_init = 
     for _ in range(iterations):
         displacement = np.zeros_like(vertex_coordinates)
         
+        tr = BH_Tree(vertex_coordinates, 0, 1, 0, 1)
+
         # Calculate repulsive forces
+        # for i in range(num_vertices):
+        #     for j in range(i+1, num_vertices):
+        #         delta_pos = vertex_coordinates[j] - vertex_coordinates[i]
+        #         distance = np.linalg.norm(delta_pos)
+        #         if distance != 0:
+        #             displacement[i] -= delta_pos * (k / distance)**2
+        #             displacement[j] += delta_pos * (k / distance)**2
+
         for i in range(num_vertices):
-            for j in range(i+1, num_vertices):
-                delta_pos = vertex_coordinates[j] - vertex_coordinates[i]
-                distance = np.linalg.norm(delta_pos)
-                if distance != 0:
-                    displacement[i] -= delta_pos * (k / distance)**2
-                    displacement[j] += delta_pos * (k / distance)**2
+            displacement[i] = tr.query(vertex_coordinates[i], k)
         
         # Calculate attractive forces
         for i, j in edge_list:
@@ -36,7 +42,7 @@ def fruchterman_reingold(edge_list, width, height, iterations=1000, temp_init = 
         vertex_coordinates += displacement * np.minimum(1, t / displacement_norm)[:, np.newaxis]
         
         # Ensure vertices are within the plotting area
-        vertex_coordinates = np.clip(vertex_coordinates, 0, np.array([width, height]))
+        vertex_coordinates = 1 - np.abs(1 - np.abs(vertex_coordinates))
     
         # Update cooling
         t *= cooling_rate
