@@ -28,9 +28,9 @@ def draw_graph(edge_list, coordinates, filename: str):
     plt.figure(frameon=True)
     for edge in edge_list:
         i, j = edge
-        plt.plot([coordinates[i][0], coordinates[j][0]], [coordinates[i][1], coordinates[j][1]], 'k-')
+        plt.plot([coordinates[i][0], coordinates[j][0]], [coordinates[i][1], coordinates[j][1]], 'k-', linewidth = 50 / len(coordinates))
     for i, (x, y) in enumerate(coordinates):
-        plt.plot(x, y, 'o', markersize=10, label=str(i))
+        plt.plot(x, y, 'o', markersize=500 / len(coordinates), label=str(i))
 
     # Show plot
     plt.savefig(filename)
