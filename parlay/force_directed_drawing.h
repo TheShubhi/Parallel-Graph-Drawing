@@ -137,10 +137,12 @@ auto update_pos(const parlay::sequence<edge> &E, parlay::sequence<coord> &coords
 {
     bh_tree *tree = make_bh_tree(coords.cut(0, n));
 
+    // Repulsive forces
     parlay::sequence<coord> displacement = parlay::map(coords, [&](coord &c)
                                                        { return get_repulsive_force(tree, c, ideal_length); });
     free_bh_tree(tree);
 
+    // Attractive forces
     parlay::parallel_for(0, E.size(), [&](size_t curr_e)
                          {
         auto i = E[curr_e].first;
@@ -155,10 +157,13 @@ auto update_pos(const parlay::sequence<edge> &E, parlay::sequence<coord> &coords
             displacement[j].second -= dy * (dist / ideal_length);
         } });
 
+    // Update displacement
     parlay::parallel_for(0, n, [&](size_t i)
                          {
                              auto curr_disp = displacement[i];
                              auto len = norm(curr_disp.first, curr_disp.second);
+
+                             // Limit movement by temperature and rebound vertices that go out of bounds
                              coords[i].first += curr_disp.first * std::min((real)1, temp / len);
                              coords[i].first = 1 - std::abs(1 - std::abs(coords[i].first));
                              coords[i].second += curr_disp.second * std::min((real)1, temp / len);
