@@ -10,11 +10,20 @@
 
 int main(int argc, char *argv[])
 {
-    auto usage = "Usage: force_directed_drawing <filename>";
-    if (argc != 2)
+    auto usage = "Usage: force_directed_drawing <filename> [-t]";
+    if (argc < 2 || argc > 3)
     {
         std::cerr << usage << std::endl;
         exit(1);
+    }
+
+    bool time = false;
+    if (argc == 3) {
+        if (std::string(argv[2]).compare("-t") != 0) {
+            std::cerr << usage << std::endl;
+            exit(1);
+        }
+        time = true;
     }
 
     auto str = parlay::file_map(argv[1]);
@@ -35,14 +44,24 @@ int main(int argc, char *argv[])
         E.push_back(std::make_pair(u, v));
     }
 
-    auto positions = force_directed_drawing(E, n);
-    std::cout << n << " " << m << std::endl;
-    for (coord &c : positions)
-    {
-        std::cout << std::get<0>(c) << " " << std::get<1>(c) << std::endl;
+    if (time) {
+        parlay::internal::timer t("Time");
+        for (int i=0; i < 3; i++) {
+        force_directed_drawing(E, n);
+        t.next("drawing - " + std::string(argv[1]));
+        }
+    } else {
+        auto positions = force_directed_drawing(E, n);
+        std::cout << n << " " << m << std::endl;
+        for (coord &c : positions)
+        {
+            std::cout << std::get<0>(c) << " " << std::get<1>(c) << std::endl;
+        }
+        for (edge &e : E)
+        {
+            std::cout << e.first << " " << e.second << std::endl;
+        }
     }
-    for (edge &e : E)
-    {
-        std::cout << e.first << " " << e.second << std::endl;
-    }
+    
+    
 }
