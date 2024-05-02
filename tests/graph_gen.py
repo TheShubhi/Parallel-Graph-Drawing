@@ -23,6 +23,18 @@ def gen_sierpinski(levels):
     sierpinski_helper.c = 3
     return nx.Graph(sierpinski_helper(levels, 0, 1, 2))
 
+def gen_grid(width, height):
+    edges = []
+    for i in range(0, height - 1):
+        for j in range(0, width - 1):
+            edges.append((i * width + j, i * width + (j + 1)))
+            edges.append((i * width + j, (i + 1) * width + j))
+    for i in range(height - 1):
+        edges.append((i * width + width - 1, (i + 1) * width + width - 1))
+    
+    for j in range(width - 1):
+        edges.append(((height - 1) * width + j, (height - 1) * width + j + 1))
+    return nx.Graph(edges)
 
 def write_graph(filename, graph: nx.Graph):
     p = Path(__file__).with_name(filename)
@@ -35,5 +47,7 @@ def write_graph(filename, graph: nx.Graph):
 # for i in range(10):
 #     G.add_edge(random.randrange(40), random.randrange(40))
 
-G = gen_sierpinski(4)
-write_graph("sierpinski_4.txt", G)
+
+
+G = nx.cycle_graph(4192)
+write_graph(f"cycle_4192.txt", G)
