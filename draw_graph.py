@@ -3,6 +3,7 @@ import matplotlib.lines as lines
 from sys import stdin, stdout
 import sys
 from datetime import datetime
+from pathlib import Path
 
 seq = lambda: list(map(int, stdin.readline().strip().split()))
 seqf = lambda: list(map(float, stdin.readline().strip().split()))
@@ -30,7 +31,9 @@ if __name__ == "__main__":
     name = datetime.now()
     if len(sys.argv) > 1 :
         name = sys.argv[1]
-    output_filename = f'tests/drawing/temp-{name}.png'
+        
+   
+    output_filename = f'{Path(__file__).parent}/tests/drawing/temp-{name}.png'
 
     # Draw the graph
     draw_graph(edges, coords, output_filename)

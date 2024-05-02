@@ -10,7 +10,7 @@ CXXFLAGS = -Wall -std=c++17 -pthread -I parlaylib/include/ -I parlaylib/examples
 OPTFLAGS = -O3
 
 PARLAYLIB = parlaylib/
-force_directed_drawing: force_directed_drawing.cpp
+force_directed_drawing: force_directed_drawing.cpp force_directed_drawing.h
 	$(CXX) $(CXXFLAGS) $(OPTFLAGS) -o $@ force_directed_drawing.cpp
 
 clean:
