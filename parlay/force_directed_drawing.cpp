@@ -10,10 +10,10 @@
 
 int main(int argc, char *argv[])
 {
-    auto usage = "Usage: calculate_pos <filename>";
+    auto usage = "Usage: force_directed_drawing <filename>";
     if (argc != 2)
     {
-        std::cout << usage << std::endl;
+        std::cerr << usage << std::endl;
         exit(1);
     }
 
@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
         E.push_back(std::make_pair(u, v));
     }
 
-    auto positions = calculate_pos(E, n, 1000);
+    auto positions = force_directed_drawing(E, n);
     std::cout << n << " " << m << std::endl;
     for (coord &c : positions)
     {

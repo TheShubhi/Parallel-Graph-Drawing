@@ -24,11 +24,9 @@ struct bh_tree
     coord center_of_mass;
     real width;
 };
-
-// count >1 acts as tag for internal node. TODO
-// struct bh_tree_internal : bh_tree {
-//     bh_tree *ne, *nw, *se, *sw;
-// };
+/* Possible improvement: use separate structs for internal and
+ * external nodes for memory saving. count >= 1 can be a tag
+ */
 
 parlay::type_allocator<bh_tree> bh_tree_allocator;
 
@@ -45,11 +43,11 @@ bh_tree *make_bh_tree(parlay::slice<coord *, coord *> nodes, real lo_x = 0.0, re
 
     // TODO do in recursive step?
     node->center_of_mass.first = parlay::reduce(parlay::delayed_map(nodes, [](coord x) -> real
-                                                         { return x.first; })) /
-                      nodes.size();
+                                                                    { return x.first; })) /
+                                 nodes.size();
     node->center_of_mass.second = parlay::reduce(parlay::delayed_map(nodes, [](coord x) -> real
-                                                          { return x.second; })) /
-                       nodes.size();
+                                                                     { return x.second; })) /
+                                  nodes.size();
     node->width = hi_x - lo_x;
     node->se = nullptr;
     node->sw = nullptr;
@@ -82,7 +80,7 @@ bh_tree *make_bh_tree(parlay::slice<coord *, coord *> nodes, real lo_x = 0.0, re
 
 real theta = 0.5;
 
-coord query(bh_tree *tree, const coord& curr, real k)
+coord get_repulsive_force(bh_tree *tree, const coord &curr, real ideal_length)
 {
     // Empty Node
     if (tree == nullptr)
@@ -103,17 +101,17 @@ coord query(bh_tree *tree, const coord& curr, real k)
     // If external node or far enough internal node, calculate force using center of mass
     if (tree->count == 1 || tree->width / dist <= 0.5)
     {
-        real for_x = dist_x * tree->count * (k / dist) * (k / dist);
-        real for_y = dist_y * tree->count * (k / dist) * (k / dist);
+        real for_x = dist_x * tree->count * (ideal_length / dist) * (ideal_length / dist);
+        real for_y = dist_y * tree->count * (ideal_length / dist) * (ideal_length / dist);
         return {for_x, for_y};
     }
 
     // Otherwise, calculate total force from children
     // Not parallelised as queries will already be done in parallel
-    auto [sex, sey] = query(tree->se, curr, k);
-    auto [nex, ney] = query(tree->ne, curr, k);
-    auto [nwx, nwy] = query(tree->nw, curr, k);
-    auto [swx, swy] = query(tree->sw, curr, k);
+    auto [sex, sey] = get_repulsive_force(tree->se, curr, ideal_length);
+    auto [nex, ney] = get_repulsive_force(tree->ne, curr, ideal_length);
+    auto [nwx, nwy] = get_repulsive_force(tree->nw, curr, ideal_length);
+    auto [swx, swy] = get_repulsive_force(tree->sw, curr, ideal_length);
     return {sex + nex + nwx + swx, sey + ney + nwy + swy};
 }
 
@@ -124,65 +122,84 @@ void free_bh_tree(bh_tree *tree)
         return;
     }
 
-    // par_do?
-    free_bh_tree(tree->ne);
-    free_bh_tree(tree->nw);
-    free_bh_tree(tree->sw);
-    free_bh_tree(tree->se);
+    parlay::par_do_if(tree->count > 200, [&]()
+                      { parlay::par_do([&]()
+                                       { free_bh_tree(tree->ne); }, [&]()
+                                       { free_bh_tree(tree->nw); }); }, [&]()
+                      { parlay::par_do([&]()
+                                       { free_bh_tree(tree->se); }, [&]()
+                                       { free_bh_tree(tree->sw); }); });
+
     bh_tree_allocator.retire(tree);
 }
 
+auto update_pos(const parlay::sequence<edge> &E, parlay::sequence<coord> &coords, uint n, real temp, real ideal_length)
+{
+    bh_tree *tree = make_bh_tree(coords.cut(0, n));
 
-auto update_pos(const parlay::sequence<edge>& E, parlay::sequence<coord>& coords, uint n, real temp) {
-    bh_tree* tree = make_bh_tree(coords.cut(0, n));
-    real k = 0.1 * std::sqrt(((real) 1) / n);
-
-
-    parlay::sequence<coord> displacement = parlay::map(coords, [&] (coord& c) {return query(tree, c, k);});
+    parlay::sequence<coord> displacement = parlay::map(coords, [&](coord &c)
+                                                       { return get_repulsive_force(tree, c, ideal_length); });
     free_bh_tree(tree);
 
-    parlay::parallel_for(0, E.size(), [&] (size_t curr_e) {
+    parlay::parallel_for(0, E.size(), [&](size_t curr_e)
+                         {
         auto i = E[curr_e].first;
         auto j = E[curr_e].second;
         auto dx = coords[j].first - coords[i].first;
         auto dy = coords[j].second - coords[i].second;
         auto dist = norm(dx, dy);
         if (dist > 0) {
-            displacement[i].first += dx * (dist / k);
-            displacement[i].second += dy * (dist / k);
-            displacement[j].first -= dx * (dist / k);
-            displacement[j].second -= dy * (dist / k);
-        }
-    });
+            displacement[i].first += dx * (dist / ideal_length);
+            displacement[i].second += dy * (dist / ideal_length);
+            displacement[j].first -= dx * (dist / ideal_length);
+            displacement[j].second -= dy * (dist / ideal_length);
+        } });
 
-    parlay::parallel_for(0, n, [&] (size_t i) {
-        auto curr_disp = displacement[i];
-        auto len = norm(curr_disp.first, curr_disp.second);
-        coords[i].first += curr_disp.first * std::min((real) 1, temp / len);
-        coords[i].first = 1 - std::abs(1 - std::abs(coords[i].first));
-        coords[i].second += curr_disp.second * std::min((real) 1, temp / len);
-        coords[i].second = 1 - std::abs(1 - std::abs(coords[i].second));
-
-    });
+    parlay::parallel_for(0, n, [&](size_t i)
+                         {
+                             auto curr_disp = displacement[i];
+                             auto len = norm(curr_disp.first, curr_disp.second);
+                             coords[i].first += curr_disp.first * std::min((real)1, temp / len);
+                             coords[i].first = 1 - std::abs(1 - std::abs(coords[i].first));
+                             coords[i].second += curr_disp.second * std::min((real)1, temp / len);
+                             coords[i].second = 1 - std::abs(1 - std::abs(coords[i].second)); });
 }
 
-auto calculate_pos(const parlay::sequence<edge>& E, uint n, uint iters, real temp_init = 1, real cooling_rate = 0.99) {
+auto force_directed_drawing(const parlay::sequence<edge> &E, uint n, uint max_iters = 0, real temp = 1.0, real cooling_rate = -1)
+{
+    if (max_iters == 0)
+        max_iters = 5 * n;
 
-    parlay::random_generator gen(0);
-    std::uniform_real_distribution<real> dis(0.0,1.0);
+    // 0.1 chosen empirically to work for sparse graphs
+    real ideal_length = 0.1 * std::sqrt(((real)1) / n);
+
+    // temperature @ max_iters = temperature * (cooling_rate)^max_iters = 0.01
+    cooling_rate = std::pow((0.1 * ideal_length) / temp, 1.0 / max_iters);
 
     // generate n random points in a unit square
-    auto coords = parlay::tabulate(n, [&] (int i) {
+    parlay::random_generator gen(0);
+    std::uniform_real_distribution<real> dis(0.0, 1.0);
+    auto coords = parlay::tabulate(n, [&](int i)
+                                   {
       auto r = gen[i];
-      return std::make_pair(dis(r), dis(r));
-    });
+      return std::make_pair(dis(r), dis(r)); });
 
-    real temp = temp_init;
-    for (uint i = 0; i < iters; i++) {
-        update_pos(E, coords, n, temp);
+    for (uint i = 0; i < max_iters; i++)
+    {
+        update_pos(E, coords, n, temp, ideal_length);
+        real eps = 0.01;
+        int border_count = parlay::reduce(parlay::delayed_map(coords, [&] (coord c) -> int {
+            return (c.first > 1 - eps || c.first < eps || c.second > 1 - eps || c.second < eps) ? 1 : 0;
+        }));
+
+        // If there are more than twice the expected number of points at the border, shrink ideal length to make space
+        if ((real) border_count > n * (2 * 4 * eps)){
+            ideal_length *= 0.95;
+        }
+
         temp *= cooling_rate;
     }
-    
+
     return coords;
 }
 
