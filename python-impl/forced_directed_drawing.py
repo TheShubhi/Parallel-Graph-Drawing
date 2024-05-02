@@ -96,6 +96,7 @@ def animated_force_directed_drawing(edge_list, n):
 
     # Create animation
     ani = FuncAnimation(fig, update, frames=coord_gen, interval=50, blit=True)
+    ani.save("temp.gif")
 
     plt.tight_layout()  # Remove padding
 
